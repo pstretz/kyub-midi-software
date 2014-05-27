@@ -1,0 +1,163 @@
+<html>
+<head>
+<script type="text/javascript">
+	var kyub;
+	var kyubMidichannel=[0,0,0,0];
+	var kyubIndex=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37];
+	var kyubNotes=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+	
+	function setupDisplay(){
+		document.getElementById("midiValue").value = kyubMidichannel[0];
+		document.getElementById("numberNotes").value = kyubIndex[1] - kyubIndex[0];
+		document.getElementById("notes").value = kyubNotes[0];
+		showcode();
+	}
+	
+	function midiUpdate(){
+		var midis=document.getElementsByName("mode");
+		for (var i=0; i<midis.length; i++){
+			if (midis[i].type==='radio'&&midis[i].checked){
+				kyubMidichannel[i]=document.getElementById("midiValue").value;
+			}
+		}
+		padUpdate();
+		showcode();
+	}
+	
+	function midiValUpdate(){
+		var midis=document.getElementsByName("mode");
+		for (var i=0; i<midis.length; i++){
+			if (midis[i].type==='radio'&&midis[i].checked){
+				document.getElementById("midiValue").value=kyubMidichannel[i];
+			}
+		}
+		padUpdate();
+	}
+	
+	function padUpdate(){
+		var thenotes=document.getElementsByName("pad");
+		for (var i=0; i<thenotes.length; i++){
+			if (thenotes[i].type==='radio'&&thenotes[i].checked){
+				var midis=document.getElementsByName("mode");
+				for (var k=0; k<midis.length; k++){
+					if (midis[k].type==='radio'&&midis[k].checked){	
+						var j;
+						if (k==0) {
+							j=0;
+						} else if (k==1) {
+							j=9;
+						} else if (k==2) {
+							j=18;
+						} else if (k==3) {
+							j=27;
+						}
+						document.getElementById("notes").value=kyubNotes[i+j];
+						document.getElementById("numberNotes").value=kyubIndex[i+j+1] - kyubIndex[i+j];
+					}
+				}
+			}
+		}
+	}
+	
+	function indexUpdate(){
+		var thenotes=document.getElementsByName("pad");
+		for (var i=0; i<thenotes.length; i++){
+			if (thenotes[i].type==='radio'&&thenotes[i].checked){
+				var midis=document.getElementsByName("mode");
+				for (var k=0; k<midis.length; k++){
+					if (midis[k].type==='radio'&&midis[k].checked){
+						var j;
+						if (k==0) {
+							j=0;
+						} else if (k==1) {
+							j=9;
+						} else if (k==2) {
+							j=18;
+						} else if (k==3) {
+							j=27;
+						}
+						var compareIdx=parseInt(kyubIndex[i+j+1]) - parseInt(kyubIndex[i+j]);
+						for (var l=i+j; l < kyubIndex.length-1; l++){
+							kyubIndex[l+1]= parseInt(kyubIndex[l+1]) + parseInt(document.getElementById("numberNotes").value) - compareIdx;				
+						}
+					}
+				}
+			}
+		}
+		showcode();
+	}
+	
+	function noteUpdate(){
+		var thenotes=document.getElementsByName("pad");
+		for (var i=0; i<thenotes.length; i++){
+			if (thenotes[i].type==='radio'&&thenotes[i].checked){
+				var midis=document.getElementsByName("mode");
+				for (var k=0; k<midis.length; k++){
+					if (midis[k].type==='radio'&&midis[k].checked){
+						var j;
+						if (k==0) {
+							j=0;
+						} else if (k==1) {
+							j=9;
+						} else if (k==2) {
+							j=18;
+						} else if (k==3) {
+							j=27;
+						}
+						kyubNotes[i+j]=document.getElementById("notes").value;
+					}
+				}
+			}
+		}
+		showcode();
+	}
+	
+	function showcode(){
+		var txt ="int modeChannel[]={";
+		for (var i=0; i<kyubMidichannel.length; i++){
+			txt=txt+kyubMidichannel[i];
+			if (i<kyubMidichannel.length-1){
+				txt=txt+",";
+			}
+		}
+		txt=txt+"};"+"<br>"+"int noteIdx[]={";
+		for (var i=0; i<kyubIndex.length; i++){
+			txt=txt+kyubIndex[i];
+			if (i<kyubIndex.length-1){
+				txt=txt+",";
+			}
+		}
+		txt=txt+"};"+"<br>"+"int note[]={";
+		for (var i=0; i<kyubNotes.length; i++){
+			txt=txt+kyubNotes[i];
+			if (i<kyubNotes.length-1){
+				txt=txt+",";
+			}
+		}
+		txt=txt+"};"+"<br>"+"int notevolume=0;"+"<br>"+"int volume=0;"+"<br>"+"int pitch=0;"+"<br>"+"long int min_note_duration=100000;";
+		document.getElementById("ArduinoCode").innerHTML=txt;
+	}
+</script>
+</head>
+<body onload="setupDisplay()">
+<form >
+<input type="radio" name="mode" id="midi0" value="0" onchange="midiValUpdate()" checked=checked>MODE 1: &nbsp
+<input type="radio" name="mode" id="midi1" value="8" onchange="midiValUpdate()">MODE 2: &nbsp
+<input type="radio" name="mode" id="midi2" value="16" onchange="midiValUpdate()">MODE 3: &nbsp
+<input type="radio" name="mode" id="midi3" value="24" onchange="midiValUpdate()">MODE 4: &nbsp <br>
+MIDI Channel:<br><input type="text" id="midiValue" onchange="midiUpdate()"><br>note: mode 1 is both option pads released, <br>mode 2 is only option 1 pad touched, <br>mode 3 is only option 2 pad touched, <br>mode 4 is both option pads touched<br><br>
+<input type="radio" name="pad" id="pad0" value="0" onchange="padUpdate()" checked=checked>Pad 1: &nbsp
+<input type="radio" name="pad" id="pad1" value="1" onchange="padUpdate()">Pad 2: &nbsp
+<input type="radio" name="pad" id="pad2" value="2" onchange="padUpdate()">Pad 3: &nbsp
+<input type="radio" name="pad" id="pad3" value="3" onchange="padUpdate()">Pad 4: &nbsp
+<input type="radio" name="pad" id="pad4" value="4" onchange="padUpdate()">Pad 5: &nbsp
+<input type="radio" name="pad" id="pad5" value="5" onchange="padUpdate()">Pad 6: &nbsp
+<input type="radio" name="pad" id="pad6" value="6" onchange="padUpdate()">Pad 7: &nbsp
+<input type="radio" name="pad" id="pad7" value="7" onchange="padUpdate()">Pad 8: &nbsp
+<input type="radio" name="pad" id="pad8" value="8" onchange="padUpdate()">Pad 9: &nbsp <br>
+Number of Notes:<br><input type="text" id="numberNotes" onchange="indexUpdate()"><br>
+Note(s):<br><input type="text" id="notes"	onchange="noteUpdate()">&nbsp<br>note: for multiple entries do not add trailing comma (i.e. 54,57,59 not 54,57,59,)<br><br>
+<p id=ArduinoCode></p>
+<img src="padid.png" alt="padid" width="377" height="377" />
+</body>
+</html>
