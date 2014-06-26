@@ -48,7 +48,7 @@ int pad[]={0,1,2,3,4,5,6,7,8,9,10};  //array holding sensing pad numbers
 int cap_calibration[11];  //calibration value for each pad
 long int chargetime[11];  //sensed charge time for each pad
 int padstate[11]={0,0,0,0,0,0,0,0,0,0,0};  //state of pad as touched (1) or not (0)
-int padmode[11]={0,0,0,0,0,0,0,0,0,0,0};  //state of pad touch as it is processed
+int padmode[11]={1,1,1,1,1,1,1,1,1,1,1};  //state of pad touch as it is processed
 //    0 = disabled
 //    1 = ready for new pad touch
 //    2 = have touch, waiting for volume
