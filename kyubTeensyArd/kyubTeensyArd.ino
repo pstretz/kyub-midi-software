@@ -9,10 +9,13 @@
  * Keith Baxter 2-Sep-2013
  *
  * - Rev 3 -  201403111009
- * Petyr Stretz 11-Mar-2014
+ * Petyr Stretz 20140403010
  * changed note define to an array for ease of coding
  * removed all the pallets, users should just paste in what they want kyub to do currently
  * 
+ *- Bug fix and feature update
+ * Peter Stretz 20140422011
+ * Fixed issue where note would get stuck on of mode changed before releasing a pad
  */
 
 //*******Global Variables
@@ -31,6 +34,7 @@ long int min_note_duration=100000;
 //----------------END CONFUGRUATION CODE---------------
 
 int channel;
+int lastChannel=0;
 int consolemidimode=1; //consolemode=0 midimode=1 accelerometer=3
 int chord1=0;  //determined by pads 9 and 10
 int chord2=0;
@@ -45,12 +49,13 @@ int cap_calibration[11];  //calibration value for each pad
 long int chargetime[11];  //sensed charge time for each pad
 int padstate[11]={0,0,0,0,0,0,0,0,0,0,0};  //state of pad as touched (1) or not (0)
 int padmode[11]={0,0,0,0,0,0,0,0,0,0,0};  //state of pad touch as it is processed
-//   0 = ready for new pad touch
-//   1 = have touch, waiting for volume
-//   2 = have volume, waiting to be played (note on)
-//   3 = have enrolled in buffer
-//   4 = played, waiting to be turned off (note off)
-//   5 = disabled pad 
+//    0 = disabled
+//    1 = ready for new pad touch
+//    2 = have touch, waiting for volume
+//    3 = have volume, waiting to be played (note on)
+//    4 = have enrolled in buffer
+//    5 = waiting to play next note
+//    6 = played, waiting to be turned off (note off)
 
 long int padlasttime[11];  //last time pad was triggered
 int padvolume[11];  //current note volume
@@ -212,14 +217,14 @@ void loop()
   else chord2=0;
 
   //deactivate these pins for all other functions
-  padmode[9]=5;
-  padmode[10]=5;
+  padmode[9]=0;
+  padmode[10]=0;
 
-  if ((padmode[pnum]==0) && (padstate[pnum]==1)) //ready for new note
+  if ((padmode[pnum]==1) && (padstate[pnum]==1)) //ready for new note
   {
     padlasttime[pnum]=micros();  //keep this low as long as pad is held
     triggerpoint=0; 
-    padmode[pnum]=1;
+    padmode[pnum]=2;
 //    holdoff[pnum]=micros();  //?? needed ??hold off stops rapid second trigger "bounce"
   }
 
@@ -314,27 +319,27 @@ void loop()
 
 
     for (int x=0; x<9; x++) { //load up pending all notes with volume numbers
-      if (padmode[x]==1) { 
+      if (padmode[x]==2) { 
         
         if ((x==6) || (x==5)|| (x==2)|| (x==1)) { //top of Kyub
           padvolume[x]=-zaxisvalley;
-          padmode[x]=2;    
+          padmode[x]=3;    
         }
         if ((x==4)) { //side of Kyub
           padvolume[x]=xaxispeak; 
-          padmode[x]=2;
+          padmode[x]=3;
         }
         if ((x==3) ) {
           padvolume[x]=-xaxisvalley;
-          padmode[x]=2;
+          padmode[x]=3;
         }
         if ((x==0) ) {
           padvolume[x]=-yaxisvalley;
-          padmode[x]=2;
+          padmode[x]=3;
         }
         if ((x==7)|| (x==8) ) {
           padvolume[x]=yaxispeak;
-          padmode[x]=2;
+          padmode[x]=3;
         }
       }
     }
@@ -343,7 +348,7 @@ void loop()
 
 //play notes *****************************************************************
   for (int x=0; x<9; x++){
-    if (padmode[x]==2){
+    if (padmode[x]==3){
       notevolume=int((padvolume[x])*10);  //??room for improviment--mapping of accel to volume
       if (notevolume>127) notevolume=127;
       if (notevolume<10) notevolume=10;
@@ -376,14 +381,14 @@ void loop()
           playNote(x);
           break;
       }
-      padmode[x]=4;
+      padmode[x]=6;
     }
   }
 
 
 //turn off notes **************************************************
   for (int x=0; x<9; x++){
-    if ((padstate[x]==0) && (padmode[x]==4)&& (micros()-padlasttime[x]>min_note_duration)){ //need reset
+    if ((padstate[x]==0) && (padmode[x]==6)){ 
       switch (x){
         case 0:
           playNote(x);
@@ -413,7 +418,7 @@ void loop()
           playNote(x);
           break;
       }
-      padmode[x]=0;
+      padmode[x]=1;
     }
   }
 
@@ -440,36 +445,91 @@ void playNote(int n){
   int y;
   int z;
   if (chord1==0 && chord2==0){
+    if (lastChannel!=0){
+      killNotes();
+    }
     channel=0x90+modeChannel[0];
-  }
-  if (chord1==1 && chord2==0){
-    channel=0x90+modeChannel[1];
-  }
-  if (chord1==0 && chord2==1){
-    channel=0x90+modeChannel[2];
-  }
-  if (chord1==1 && chord2==1){
-    channel=0x90+modeChannel[3];
-  }
-  if (chord1==0 && chord2==0){
+    lastChannel=0;
     y=noteIdx[n];
     z=noteIdx[n+1];
   }
   if (chord1==1 && chord2==0){
+    if (lastChannel!=1){
+      killNotes();
+    }
+    channel=0x90+modeChannel[1];
+    lastChannel=1;
     y=noteIdx[n+9];
     z=noteIdx[n+10];
   }
   if (chord1==0 && chord2==1){
+    if (lastChannel!=2){
+      killNotes();
+    }
+    channel=0x90+modeChannel[2];
+    lastChannel=2;
     y=noteIdx[n+18];
     z=noteIdx[n+19];
   }
   if (chord1==1 && chord2==1){
+    if (lastChannel!=3){
+      killNotes();
+    }
+    channel=0x90+modeChannel[3];
+    lastChannel=3;
     y=noteIdx[n+27];
     z=noteIdx[n+28];
   }
   for (int x=y; x<z; x++){
     pitch=note[x];
-    if (padmode[n]==2) usbMIDI.sendNoteOn(pitch, notevolume, channel);
-    if (padmode[n]==4) usbMIDI.sendNoteOff(pitch, notevolume, channel);
+    if (padmode[n]==3) usbMIDI.sendNoteOn(pitch, notevolume, channel);
+    if (padmode[n]==6) usbMIDI.sendNoteOff(pitch, notevolume, channel);
+  }
+}
+
+//killNotes checks if any pads were still alive when the mode changed and sends a noteOff to kill them.  This resolves the issue with a stuck note when changing modes before relasing the pad
+void killNotes(){
+  int killnotevolume=0;
+  int killpitch=0;
+  int y=0;
+  int z=0;
+  for (int k=0; k<11; k++){
+    if (padmode[k]==6){
+      switch (lastChannel){
+        case 0:
+          y=noteIdx[k];
+          z=noteIdx[k+1];
+          for (int x=y; x<z; x++){
+            killpitch=note[x];
+            usbMIDI.sendNoteOff(killpitch, killnotevolume, lastChannel);
+          }
+        break;
+        case 1:
+          y=noteIdx[k+9];
+          z=noteIdx[k+10];
+          for (int x=y; x<z; x++){
+            killpitch=note[x];
+            usbMIDI.sendNoteOff(killpitch, killnotevolume, lastChannel);
+          }
+        break;
+        case 2:
+          y=noteIdx[k+18];
+          z=noteIdx[k+19];
+          for (int x=y; x<z; x++){
+            killpitch=note[x];
+            usbMIDI.sendNoteOff(killpitch, killnotevolume, lastChannel);
+          }
+        break;
+        case 3:
+          y=noteIdx[k+27];
+          z=noteIdx[k+28];
+          for (int x=y; x<z; x++){
+            killpitch=note[x];
+            usbMIDI.sendNoteOff(killpitch, killnotevolume, lastChannel);
+          }
+        break;
+      }
+      padmode[k]=1;
+    }
   }
 }
